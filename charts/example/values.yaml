@@ -1,0 +1,5 @@
+myobj:
+  myproperty: my value
+
+addPackagedValue: false
+#packagedValue: supposed to be provided as inline value by the Action

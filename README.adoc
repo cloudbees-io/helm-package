@@ -1,0 +1,82 @@
+= CloudBees action: Package a Helm chart
+
+Use this action to package a Helm chart into a versioned chart archive file.
+
+== Inputs
+
+[cols="2a,1a,1a,3a",options="header"]
+.Input details
+|===
+
+| Input name
+| Data type
+| Required?
+| Description
+
+| `chart`
+| String
+| Yes
+| The path of the Helm chart to be packaged.
+
+| `destination`
+| String
+| Yes
+| The path of the packaged Helm chart.
+
+| `version`
+| String
+| Yes
+| The Helm release version.
+
+| `app-version`
+| String
+| Yes
+| The application version.
+
+| `verify`
+| Boolean
+| No
+| Default is `false`.
+When value is `true`, the package is verified.
+
+| `sign`
+| Boolean
+| No
+| Default is `false`.
+When value is `true`, the package is signed.
+
+| `sign-key`
+| String
+| No
+| The signing key.
+
+|===
+
+== Usage example
+
+In your YAML file, add:
+
+[source,yaml]
+----
+      - name: Package Helm chart
+        uses: cloudbees-io/helm-package@v1
+        with:
+          chart: ./charts/example
+          destination: ./output-directory
+          version: "0.0.1"
+          app-version: "0.3.0"
+          verify: "false"
+          sign: "false"
+          sign-key: "mykeyname"
+
+----
+
+== License
+
+This code is made available under the 
+link:https://opensource.org/license/mit/[MIT license].
+
+== References
+
+* Learn more about link:https://docs.cloudbees.com/docs/cloudbees-saas-platform-actions/latest/[using actions in CloudBees workflows].
+* Learn about link:https://docs.cloudbees.com/docs/cloudbees-saas-platform/latest/[the CloudBees platform].

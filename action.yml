@@ -1,0 +1,82 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: action
+name: helm-package
+description: 'Package a Helm chart'
+
+inputs:
+  chart:
+    description: Path to the chart source directory.
+    required: true
+  version:
+    description: The chart version that should be set.
+  app-version:
+    description: The application version that should be set. Defaults to the chart version.
+  destination:
+    description: The directory the packaged chart is written to.
+  verify:
+    description: Verify the dependency signatures using PGP.
+  sign:
+    description: Sign the packaged chart using PGP.
+  sign-key:
+    description: Name of the key to use when signing.
+  values:
+    description: Interpolated chart values that should be packaged with the chart
+
+outputs:
+  directory:
+    description: Path to the output directory that contains the packaged chart.
+    value: ${{steps.package.outputs.directory}}
+  chart:
+    description: Path to the packaged chart file.
+    value: ${{steps.package.outputs.chart}}
+  version:
+    description: Version of the packaged chart.
+    value: ${{steps.package.outputs.version}}
+  name:
+    description: Name of the chart as defined in Chart.yaml
+    value: ${{steps.package.outputs.name}}
+
+runs:
+  using: composite
+  steps:
+    - name: Merge Helm chart values
+      # TODO: make this step conditional once the DSL supports conditions:
+      #if: inputs.values
+      uses: docker://mikefarah/yq:4.34.1-githubaction
+      working-directory: ${{ inputs.chart }}
+      run: |
+        set -u
+        [ "$VALUES" ] || exit 0
+        echo Merging Action input values with default chart values
+        touch values.yaml
+        echo "$VALUES" > /tmp/add-values.yaml
+        yq eval-all --inplace '. as $item ireduce ({}; . *+ $item)' values.yaml /tmp/add-values.yaml
+      env:
+        VALUES: ${{ inputs.values }}
+
+    - id: package
+      name: Package Helm chart
+      uses: docker://alpine/helm:3.12.1
+      run: |
+        set -u
+        : "${DESTDIR:=$(mktemp -d -p $RUNNER_TEMP chart-XXXXXXXXXX)}"
+        : "${CHART_VERSION:=$(helm show chart "$CHART" | grep -E '^version: ' | sed -E 's/^version: //')}"
+        CHART_NAME="$(helm show chart "$CHART" | grep -E '^name: ' | sed -E 's/^name: //')"
+        printf %s "$DESTDIR" > $CLOUDBEES_OUTPUTS/directory
+        printf %s "${DESTDIR}/${CHART_NAME}-${CHART_VERSION}.tgz" > $CLOUDBEES_OUTPUTS/chart
+        printf %s "$CHART_VERSION" > $CLOUDBEES_OUTPUTS/version
+        printf %s "$CHART_NAME" > $CLOUDBEES_OUTPUTS/name
+        set -x
+        helm dependency build --verify=${{ inputs.verify == 'true' }} "$CHART"
+        helm package \
+          --version="${CHART_VERSION}" \
+          --app-version="${APP_VERSION:-$CHART_VERSION}" \
+          --sign=${{ inputs.sign == 'true' }} \
+          --key="$SIGN_KEY" \
+          --destination="$DESTDIR" \
+          "$CHART"
+      env:
+        CHART: ${{ inputs.chart }}
+        DESTDIR: ${{ inputs.destination }}
+        CHART_VERSION: ${{ inputs.version }}
+        SIGN_KEY: ${{ inputs.sign-key }}

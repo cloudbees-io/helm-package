@@ -1,0 +1,10 @@
+apiVersion: v2
+name: example-chart
+description: An example chart to test the Action.
+type: application
+version: 0.0.0
+appVersion: "0.0.0"
+dependencies:
+- name: karpenter
+  version: "v0.27.0"
+  repository: "oci://public.ecr.aws/karpenter"
