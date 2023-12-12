@@ -56,7 +56,7 @@ runs:
 
     - id: package
       name: Package Helm chart
-      uses: docker://alpine/helm:3.12.1
+      uses: docker://alpine/helm:3.13.2
       run: |
         set -u
         : "${DESTDIR:=$(mktemp -d -p $RUNNER_TEMP chart-XXXXXXXXXX)}"
