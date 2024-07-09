@@ -40,8 +40,7 @@ runs:
   using: composite
   steps:
     - name: Merge Helm chart values
-      # TODO: make this step conditional once the DSL supports conditions:
-      #if: inputs.values
+      if: ${{ inputs.values != "" }}
       uses: docker://mikefarah/yq:4.44.2-githubaction
       working-directory: ${{ inputs.chart }}
       run: |
