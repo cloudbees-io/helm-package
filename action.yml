@@ -40,7 +40,7 @@ runs:
   using: composite
   steps:
     - name: Merge Helm chart values
-      if: ${{ inputs.values != "" }}
+      if: ${{ !!inputs.values }}
       uses: docker://mikefarah/yq:4.44.2-githubaction
       working-directory: ${{ inputs.chart }}
       run: |
