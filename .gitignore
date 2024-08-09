@@ -1,2 +1,5 @@
+/bin
 charts/example/charts/
+/cmd/*/*
+!/cmd/*/*.go
 

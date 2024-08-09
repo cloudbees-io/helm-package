@@ -20,7 +20,12 @@ inputs:
   sign-key:
     description: Name of the key to use when signing.
   values:
-    description: Interpolated chart values that should be packaged with the chart
+    description: Interpolated chart values that should be packaged with the chart.
+  registry-configuration:
+    description: >
+      CloudBees registry configuration file containing the registries to use for loading images.
+      By default it uses the file containing the registries configured under 'Integrations' in the CloudBees platform.
+    default: ${{ cloudbees.registries }}
 
 outputs:
   directory:
@@ -39,43 +44,18 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Merge Helm chart values
-      if: ${{ !!inputs.values }}
-      uses: docker://mikefarah/yq:4.44.2-githubaction
-      working-directory: ${{ inputs.chart }}
-      run: |
-        set -u
-        [ "$VALUES" ] || exit 0
-        echo Merging Action input values with default chart values
-        touch values.yaml
-        echo "$VALUES" > /tmp/add-values.yaml
-        yq eval-all --inplace '. as $item ireduce ({}; . *+ $item)' values.yaml /tmp/add-values.yaml
-      env:
-        VALUES: ${{ inputs.values }}
-
     - id: package
       name: Package Helm chart
-      uses: docker://alpine/helm:3.15.2
-      run: |
-        set -u
-        : "${DESTDIR:=$(mktemp -d -p $RUNNER_TEMP chart-XXXXXXXXXX)}"
-        : "${CHART_VERSION:=$(helm show chart "$CHART" | grep -E '^version: ' | sed -E 's/^version: //')}"
-        CHART_NAME="$(helm show chart "$CHART" | grep -E '^name: ' | sed -E 's/^name: //')"
-        printf %s "$DESTDIR" > $CLOUDBEES_OUTPUTS/directory
-        printf %s "${DESTDIR}/${CHART_NAME}-${CHART_VERSION}.tgz" > $CLOUDBEES_OUTPUTS/chart
-        printf %s "$CHART_VERSION" > $CLOUDBEES_OUTPUTS/version
-        printf %s "$CHART_NAME" > $CLOUDBEES_OUTPUTS/name
-        set -x
-        helm dependency build --verify=${{ inputs.verify == 'true' }} "$CHART"
-        helm package \
-          --version="${CHART_VERSION}" \
-          --app-version="${APP_VERSION:-$CHART_VERSION}" \
-          --sign=${{ inputs.sign == 'true' }} \
-          --key="$SIGN_KEY" \
-          --destination="$DESTDIR" \
-          "$CHART"
+      uses: docker://020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/helm-package-action:${{action.scm.sha}}
+      with:
+        entrypoint: /cbhelmpkg
+        args: "${{ inputs.chart }}"
       env:
-        CHART: ${{ inputs.chart }}
-        DESTDIR: ${{ inputs.destination }}
-        CHART_VERSION: ${{ inputs.version }}
-        SIGN_KEY: ${{ inputs.sign-key }}
+        CBHELMPKG_VERSION: ${{ inputs.version }}
+        CBHELMPKG_APP_VERSION: ${{ inputs.app-version }}
+        CBHELMPKG_EMBED_VALUES: ${{ inputs.values }}
+        CBHELMPKG_VERIFY: ${{ inputs.verify == 'true' }}
+        CBHELMPKG_SIGN: ${{ inputs.sign == 'true' }}
+        CBHELMPKG_KEY: ${{ inputs.sign-key }}
+        CBHELMPKG_REGISTRY_CONFIG: ${{ inputs.registry-configuration }}
+        CBHELMPKG_DESTINATION: ${{ inputs.destination }}
