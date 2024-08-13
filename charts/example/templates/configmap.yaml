@@ -4,6 +4,7 @@ metadata:
   name: {{ .Release.name }}
 data:
   key: {{ .Values.myobj.myproperty | quote }}
+  key2: {{ .Values.myobj.otherproperty | quote }}
   {{- if .Values.addPackagedValue }}
   otherkey: {{ required "packagedValue was not specified!" .Values.packagedValue | quote }}
   {{- end }}

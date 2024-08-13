@@ -1,0 +1,125 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: build
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    permissions:
+      scm-token-own: read
+      id-token: write
+    steps:
+    - name: Get source code
+      uses: cloudbees-io/checkout@v1
+    - name: Validate action copy for testing
+      uses: docker://alpine:3.20
+      run: |
+        TESTING_SHA=$(cat .cloudbees/testing/action.yml | sha1sum)
+        ORIGINAL_SHA=$(sed -e 's|docker://public.ecr.aws/l7o7z1g8/actions/|docker://020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/|g' < action.yml | sha1sum)
+        if [ "${TESTING_SHA}" != "${ORIGINAL_SHA}" ]; then
+          echo "Original action different from testing action"
+          exit 1
+        fi
+    - name: Build binary
+      uses: docker://golang:1.22-alpine3.20
+      run: go build -a -ldflags '-w -s -extldflags \"-static\"' -o ./bin/cbhelmpkg ./cmd/cbhelmpkg
+      env:
+        CGO_ENABLED: "0"
+    - name: Login to AWS
+      uses: https://github.com/cloudbees-io/configure-aws-credentials@v1
+      with:
+        aws-region: us-east-1
+        role-to-assume: ${{ vars.oidc_staging_iam_role }}
+        role-duration-seconds: "3600"
+    - id: ecrconfig
+      name: Configure container registry for staging ECR
+      uses: cloudbees-io/configure-ecr-credentials@v1
+    - name: Build container image
+      uses: cloudbees-io/kaniko@v1
+      with:
+        destination: 020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/helm-package-action:${{ cloudbees.scm.sha }}${{ cloudbees.scm.branch == 'main' && ',020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/helm-package-action:latest' || '' }}
+        labels: maintainer=sdp-pod-3,email=engineering@cloudbees.com
+    - name: Run TruffleHog Container Action
+      uses: cloudbees-io/trufflehog-secret-scan-container@v1
+      with:
+        image-location: 020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/helm-package-action
+        image-tag: ${{ cloudbees.scm.sha }}
+
+  test-minimal:
+    needs: build
+    steps:
+    - name: Get source code
+      uses: cloudbees-io/checkout@v1
+    - id: action
+      name: Run Action
+      uses: ./.cloudbees/testing
+      with:
+        chart: ./charts/example
+    - name: Verify Action output
+      uses: docker://alpine/helm:3.15.3
+      run: |
+        set -ux
+        [ -d "$OUTDIR" ]
+        echo "$OUTDIR" | grep -Eq "^$RUNNER_TEMP/chart-"
+        [ -f "$OUTCHART" ]
+        [ "$OUTCHART" = $OUTDIR/example-chart-0.0.0.tgz ]
+        [ "$OUTVERSION" = 0.0.0 ]
+        MANIFEST="$(helm template $OUTCHART)"
+        echo "$MANIFEST" | grep -q "my value"
+      env:
+        OUTDIR: ${{ steps.action.outputs.directory }}
+        OUTCHART: ${{ steps.action.outputs.chart }}
+        OUTVERSION: ${{ steps.action.outputs.version }}
+
+  test-maximal:
+    needs: build
+    steps:
+    - name: Get source code
+      uses: cloudbees-io/checkout@v1
+    - name: Modify chart to make packagedValue mandatory
+      uses: docker://alpine:3.18
+      run: |
+        sed -Ei 's/^addPackagedValue:.*/addPackagedValue: true/' ./charts/example/values.yaml
+    - id: action
+      name: Run Action
+      uses: ./.cloudbees/testing
+      with:
+        chart: ./charts/example
+        destination: ./chart-output
+        version: "0.0.7"
+        app-version: "0.3.0"
+        verify: "false"
+        sign: "false"
+        sign-key: "mykeyname"
+        values: |
+          myobj:
+            otherproperty: overwritten value
+          packagedValue: fake added value
+    - name: Verify Action output
+      uses: docker://alpine/helm:3.15.3
+      run: |
+        set -ux
+        [ -d "$OUTDIR" ]
+        [ "$OUTDIR" = "chart-output" ]
+        [ -f "$OUTCHART" ]
+        [ "$OUTCHART" = $OUTDIR/example-chart-0.0.7.tgz ]
+        [ "$OUTVERSION" = 0.0.7 ]
+        [ "$OUTNAME" = example-chart ]
+        set +x
+        echo Templating the packaged chart $OUTCHART
+        MANIFEST="$(helm template $OUTCHART)"
+        echo Verifying that default value is present
+        echo "$MANIFEST" | grep -q "my value"
+        echo Verifying that value is overwritten
+        echo "$MANIFEST" | grep -q "overwritten value"
+        echo Verifying that value was added
+        echo "$MANIFEST" | grep -q "fake added value"
+      env:
+        OUTDIR: ${{ steps.action.outputs.directory }}
+        OUTCHART: ${{ steps.action.outputs.chart }}
+        OUTVERSION: ${{ steps.action.outputs.version }}
+        OUTNAME: ${{ steps.action.outputs.name }}

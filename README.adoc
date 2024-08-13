@@ -80,3 +80,15 @@ link:https://opensource.org/license/mit/[MIT license].
 
 * Learn more about link:https://docs.cloudbees.com/docs/cloudbees-saas-platform-actions/latest/[using actions in CloudBees workflows].
 * Learn about link:https://docs.cloudbees.com/docs/cloudbees-saas-platform/latest/[the CloudBees platform].
+
+== Development
+
+To test changes to the Action binary locally, run:
+
+[source,sh]
+----
+make
+rm -rf /tmp/output
+mkdir -p /tmp/output
+RUNNER_TEMP=/tmp CLOUDBEES_OUTPUTS=/tmp/output ./bin/cbhelmpkg ./charts/example/ --embed-values='{"addPackagedValue": true, "packagedValue": "fake value", "myobj": {"otherproperty": "overwritten"}}'
+----
