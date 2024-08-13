@@ -15,6 +15,15 @@ jobs:
     steps:
     - name: Get source code
       uses: cloudbees-io/checkout@v1
+    - name: Validate action copy for testing
+      uses: docker://alpine:3.20
+      run: |
+        TESTING_SHA=$(cat .cloudbees/testing/action.yml | sha1sum)
+        ORIGINAL_SHA=$(sed -e 's|docker://public.ecr.aws/l7o7z1g8/actions/|docker://020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/|g' < action.yml | sha1sum)
+        if [ "${TESTING_SHA}" != "${ORIGINAL_SHA}" ]; then
+          echo "Original action different from testing action"
+          exit 1
+        fi
     - name: Build binary
       uses: docker://golang:1.22-alpine3.20
       run: go build -a -ldflags '-w -s -extldflags \"-static\"' -o ./bin/cbhelmpkg ./cmd/cbhelmpkg
@@ -47,10 +56,9 @@ jobs:
       uses: cloudbees-io/checkout@v1
     - id: action
       name: Run Action
-      uses: .
+      uses: ./.cloudbees/testing
       with:
         chart: ./charts/example
-
     - name: Verify Action output
       uses: docker://alpine/helm:3.15.3
       run: |
@@ -78,7 +86,7 @@ jobs:
         sed -Ei 's/^addPackagedValue:.*/addPackagedValue: true/' ./charts/example/values.yaml
     - id: action
       name: Run Action
-      uses: .
+      uses: ./.cloudbees/testing
       with:
         chart: ./charts/example
         destination: ./chart-output
