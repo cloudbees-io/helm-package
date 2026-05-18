@@ -2,4 +2,4 @@
 charts/example/charts/
 /cmd/*/*
 !/cmd/*/*.go
-
+/.vscode/
