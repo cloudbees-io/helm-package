@@ -1,6 +1,6 @@
 module github.com/cloudbees-io/helm-package
 
-go 1.26.2
+go 1.26.3
 
 require (
 	github.com/cloudbees-io/registry-config v0.0.0-20240808192011-86b0b147c63e
