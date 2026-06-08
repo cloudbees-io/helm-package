@@ -46,7 +46,7 @@ runs:
   steps:
     - id: package
       name: Package Helm chart
-      uses: docker://public.ecr.aws/l7o7z1g8/actions/helm-package-action:76facfd90c8c0e6b1d08b920639f28461eb67060
+      uses: docker://public.ecr.aws/l7o7z1g8/actions/helm-package-action:${{action.scm.sha}}
       with:
         entrypoint: /cbhelmpkg
         args: "${{ inputs.chart }}"
