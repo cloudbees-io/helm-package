@@ -9,7 +9,7 @@ require (
 	github.com/spf13/pflag v1.0.7
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.18.6
-	k8s.io/client-go v0.33.3
+	k8s.io/client-go v0.36.3
 )
 
 require (
