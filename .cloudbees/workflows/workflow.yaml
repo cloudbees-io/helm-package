@@ -35,6 +35,7 @@ jobs:
         go-binary-name: bin/cbhelmpkg
         kaniko-build: "true"
         run-unit-test: "true"
+        unit-test-percent: "0"
         registry-url: 020229604682.dkr.ecr.us-east-1.amazonaws.com
         registry-image-name: actions/helm-package-action
         registry-type: ECR
