@@ -12,6 +12,7 @@ jobs:
   build:
     permissions:
       scm-token-own: read
+      scm-token-org: read
       id-token: write
     steps:
     - name: Get source code
@@ -25,35 +26,19 @@ jobs:
           echo "Original action different from testing action"
           exit 1
         fi
-    - name: Build binary
-      uses: docker://golang:1.26.2-alpine3.22
-      run: go build -a -ldflags '-w -s -extldflags \"-static\"' -o ./bin/cbhelmpkg ./cmd/cbhelmpkg
-      env:
-        CGO_ENABLED: "0"
-    - name: Login to AWS
-      uses: https://github.com/cloudbees-io/configure-aws-credentials@v1
+    - name: Build, test, scan and push to ECR
+      id: buildimage
+      uses: calculi-corp/cb-internal-shared-actions/build/action@v8
       with:
-        aws-region: us-east-1
-        role-to-assume: ${{ vars.oidc_staging_iam_role }}
-        role-duration-seconds: "3600"
-    - id: ecrconfig
-      name: Configure container registry for staging ECR
-      uses: cloudbees-io/configure-ecr-credentials@v1
-    - name: Build container image
-      id: build-image
-      uses: cloudbees-io/kaniko@v1
-      with:
-        destination: 020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/helm-package-action:${{ cloudbees.scm.sha }}${{ cloudbees.scm.branch == 'main' && ',020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/helm-package-action:latest' || '' }}
-        labels: maintainer=sdp-pod-3,email=engineering@cloudbees.com
-
-    - id: slsa-attestation
-      name: Generate SLSA attestation
-      uses: https://github.com/calculi-corp/slsa-attestation@v1
-      with:
-        image-digest: 020229604682.dkr.ecr.us-east-1.amazonaws.com/actions/helm-package-action@${{ steps.build-image.outputs.digest }}
-        aws-role-to-assume: ${{ vars.oidc_staging_iam_role }}
-        aws-region: us-east-1
-        aws-kms-alias: cbp-dev-kms-key-cosign
+        go-build-main: "./cmd/cbhelmpkg"
+        go-binary-build: "true"
+        go-binary-name: bin/cbhelmpkg
+        kaniko-build: "true"
+        run-unit-test: "true"
+        registry-url: 020229604682.dkr.ecr.us-east-1.amazonaws.com
+        registry-image-name: actions/helm-package-action
+        registry-type: ECR
+        oidc-iam-role: ${{ vars.oidc_staging_iam_role }}
     - name: Run TruffleHog Container Action
       uses: cloudbees-io/trufflehog-secret-scan-container@v1
       with:
