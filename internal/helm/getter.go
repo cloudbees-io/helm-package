@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/registry"
 
 	"github.com/cloudbees-io/registry-config/pkg/registries"
 	"github.com/cloudbees-io/registry-config/pkg/resolve"
