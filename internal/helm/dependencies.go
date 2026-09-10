@@ -3,7 +3,7 @@ package helm
 import (
 	"io"
 
-	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v4/pkg/downloader"
 )
 
 // UpdateDependencies fetches the chart dependencies.
