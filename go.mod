@@ -3,7 +3,7 @@ module github.com/cloudbees-io/helm-package
 go 1.26.2
 
 require (
-	github.com/cloudbees-io/registry-config v0.0.0-20240808192011-86b0b147c63e
+	github.com/cloudbees-io/registry-config v0.0.0-20260615110407-340643649383
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
