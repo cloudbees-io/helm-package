@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chart/loader"
 
 	"github.com/cloudbees-io/helm-package/internal/helm"
 )
